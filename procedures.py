@@ -179,10 +179,10 @@ def display_end_of_practice(win, redo, accuracy):
     
     if redo:
         displayed_msg = visual.TextStim(win=win, pos=[0,0], height=0.05,
-        text="It was close!!\nYour accuracy was: " + str(accuracy) + "\n\nYou can re-attempt the practice and it will start with the highest difficulty and speed\n\n\n\n\nPress 'Space' to start")
+        text="It was close!!\nYour accuracy was: " + str(round(accuracy,2)) + "\n\nYou can re-attempt the practice and it will start with the highest difficulty and speed\n\n\n\n\nPress 'Space' to start")
     else:
         displayed_msg = visual.TextStim(win=win, pos=[0,0], height=0.05,
-        text="Good job!!\Your accuracy was: " + str(accuracy) + "\n\n\n\n\nPress 'Space' to start the experiment")
+        text="Good job!!\nYour accuracy was: " + str(round(accuracy,2)) + "\n\n\n\n\nPress 'Space' to start the experiment")
     displayed_msg.draw()
     win.flip()
     
@@ -241,7 +241,7 @@ def run_practice(win, global_clock, trial_clock, output_file):
     # keep track of accuracy
     accuracy = 0
     n_correct = 0
-    n_trial = 0
+    n_trials = 0
     
     # if this is a re-do practice
     is_redo = False
@@ -299,15 +299,15 @@ def run_practice(win, global_clock, trial_clock, output_file):
                 kb.clearEvents()
             
             # only consider the trials where speed has reached the desired
-            if row.stim_duration <= params.STIM_TIME:
+            if row.stim_duration <= params.STIM_TIME * 1000:
                 if len(all_keys) == 0:
-                    if row.correct_respond == 'no_target':
+                    if row.correct_response == 'no_target':
                         n_correct += 1
                 else:
-                    if all_keys[0] == row.correct_respond:
+                    if all_keys[0] == row.correct_response:
                         n_correct += 1
         
-                n_trial += 1
+                n_trials += 1
         
         accuracy = n_correct / n_trials
         

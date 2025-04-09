@@ -1,4 +1,6 @@
 # import libraries
+import psychopy
+psychopy.useVersion('2024.2.0')
 from psychopy import core, visual, gui, data, event
 #from psychopy.hardware import keyboard
 #from psychopy.preferences import prefs
