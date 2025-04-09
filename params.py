@@ -22,17 +22,22 @@ if IS_TESTING:
 else:
     DATA_DIR = 'data'
 #PRACTICE_BLOCK_FILE = 'conditions/practice_block.csv'
-PRACTICE_BLOCK_FILE = 'conditions/practice_block_short.csv'
-BLOCKLIST_FILE = 'conditions/block_list.csv'
+#BLOCKLIST_FILE = 'conditions/block_list.csv'
 #N_PRACTICE = 150
+
+PRACTICE_BLOCK_FILE = 'conditions/practice_block_short.csv'
+BLOCKLIST_FILE = 'conditions/block_list_short.csv'
 N_PRACTICE = 20
-BLOCKS_PER_SESSION = 2
+
+BLOCKS_PER_SESSION = 9
 
 # Participant settings
 DEFAULT_SUBJ = 0
 
 # Stimulus settings
 OUTPUT_COLS = 'key_resp,key_resp.rt'
+FIX_SIZE = 1
+
 STIM_SIZE = 7
 STIM_DIST = 10
 DOT_SIZE = 12 # in pixel. BEST: 0.1–0.3 degrees of visual angle 
@@ -41,24 +46,25 @@ DOT_LIFE = 3 # in frames
 N_DOTS = 100 # 5 ~ 50 per deg^2, 153 deg^2 => 2500 dots
 
 if MONITOR == 'Lab':
+    FIX_SIZE = 1.3
     STIM_SIZE = 10
     STIM_DIST = 14
-    DOT_SIZE = 8
+    DOT_SIZE = 7
     DOT_SPEED = 0.4
     DOT_LIFE = 3
-    N_DOTS = 50
+    N_DOTS = 70
 
 # Participant settings
 
 # Time Settings (in seconds)
-FIX_TIME = 0.3
+FIX_TIME = 3
 STIM_TIME = 0.25
 ISI_TIME = 1.05 
 
 # Eye tracker settings
-USE_EYETRACKER = False
-TRACKER = 'mouse'
-#TRACKER = 'tobii'
+USE_EYETRACKER = True
+#TRACKER = 'mouse'
+TRACKER = 'tobii'
 
 # Trial settings
 SKIP_INTRO = False

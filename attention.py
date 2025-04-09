@@ -1,14 +1,15 @@
 # import libraries
 import psychopy
-psychopy.useVersion('2024.2.0')
+psychopy.useVersion('2024.2.4')
 from psychopy import core, visual, gui, data, event
 #from psychopy.hardware import keyboard
 #from psychopy.preferences import prefs
 from psychopy.tools.filetools import fromFile, toFile
-import numpy, random
+import numpy, random, warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
 # import modules
 import params
-from procedures import setup_window, initialise_exp, calibrate_eyetracker, run_intro, run_practice, run_trials, run_outtro
+from procedures import setup_window, initialise_exp, calibrate_eyetracker, validate_eyetracker, run_intro, run_practice, run_trials, run_outtro
 
 if __name__ == '__main__':
     output_file = initialise_exp()
@@ -23,6 +24,7 @@ if __name__ == '__main__':
     
     if params.USE_EYETRACKER:
         calibrate_eyetracker(win)
+        validate_eyetracker(win)
 
     if params.DO_PRACTICE:
         run_practice(win, global_clock, trial_clock, output_file)

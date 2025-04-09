@@ -1,9 +1,12 @@
 # import libraries
-from psychopy import core, monitors, visual, gui, data, event, logging
+from psychopy import core, monitors, visual, sound, gui, data, event, logging
 from psychopy.tools.filetools import fromFile, toFile
 from psychopy.hardware import keyboard
+from psychopy import iohub
 from psychopy.iohub import launchHubServer
+from psychopy.iohub.client import ioHubConnection
 from psychopy.iohub.util import hideWindow, showWindow
+from psychopy.iohub.client.eyetracker.validation import TargetStim
 import random, os, csv
 import pandas as pd
 import numpy as np
@@ -78,7 +81,6 @@ def run_intro(win):
         
 def calibrate_eyetracker(win):
     """eyetracker calibration"""
-    devices_config = dict()
     eyetracker_config = dict(name='tracker')
     devices_config = {}
     if params.TRACKER == 'mouse':
@@ -101,12 +103,12 @@ def calibrate_eyetracker(win):
                                                                                 contract_only=False)
                                                                    )
                                             )
-    elif TRACKER == 'tobii':
+    elif params.TRACKER == 'tobii':
         eyetracker_config['calibration'] = dict(auto_pace=True,
                                             target_duration=1.5,
                                             target_delay=1.0,
                                             screen_background_color=(0, 0, 0),
-                                            type='NINE_POINTS',
+                                            type='FIVE_POINTS',
                                             unit_type=None,
                                             color_type=None,
                                             target_attributes=dict(outer_diameter=0.05,
@@ -122,19 +124,79 @@ def calibrate_eyetracker(win):
                                             )
         devices_config['eyetracker.hw.tobii.EyeTracker'] = eyetracker_config
     else:
-        print("{} is not a valid TRACKER name; please use 'mouse', 'eyelink', 'gazepoint', or 'tobii'.".format(TRACKER))
+        print("{} is not a valid TRACKER name; please use 'mouse' or 'tobii'.".format(params.TRACKER))
         core.quit()
     
-    io = launchHubServer(window=win, **devices_config)
-    tracker = io.getDevice('tracker')
+    io_hub_server = launchHubServer(window=win, **devices_config)
+    eye_tracker = io_hub_server.getDevice('tracker')
     # Minimize the PsychoPy window if needed
     hideWindow(win)
     # Display calibration gfx window and run calibration.
-    win.setMouseVisible(True)
-    result = tracker.runSetupProcedure()
+    result = eye_tracker.runSetupProcedure()
     print("Calibration returned: ", result)
     # Maximize the PsychoPy window if needed
     showWindow(win)
+    
+#    kb = keyboard.Keyboard()
+#    displayed_msg = visual.TextStim(win=win, pos=[0,0], height=0.05,
+#        text="Now we need to validate the calibration results. Press 'SPACE' to start")
+#    displayed_msg.draw()
+#    win.flip()
+#
+#    keys = kb.waitKeys(maxWait=float('inf'), keyList=['space', 'escape'])
+#    if 'escape' in keys:
+#        core.quit()
+#    kb.clearEvents()
+
+def validate_eyetracker(win):
+    """eyetracker validation"""
+    target_stim = TargetStim(win, radius=0.025, fillcolor=[.5, .5, .5], edgecolor=[-1, -1, -1], edgewidth=2,
+        dotcolor=[1, -1, -1], dotradius=0.005, units='height', colorspace='rgb')
+
+    target_positions = 'FIVE_POINTS'
+
+    validation_proc = iohub.ValidationProcedure(win,
+        target=target_stim,  # target stim
+        positions=target_positions,  # string constant or list of points
+        randomize_positions=True,  # boolean
+        expand_scale=1.5,  # float
+        target_duration=1.5,  # float
+        target_delay=1.0,  # float
+        enable_position_animation=True,
+        color_space='rgb',
+        unit_type='height',
+        progress_on_key="",  # str or None
+        gaze_cursor=(-1.0, 1.0, -1.0),  # None or color value
+        show_results_screen=True,  # bool
+        save_results_screen=False,  # bool, only used if show_results_screen == True
+        )
+
+    validation_proc.run()
+    if validation_proc.results:
+        results = validation_proc.results
+        print("++++ Validation Results ++++")
+        print("Passed:", results['passed'])
+        print("failed_pos_count:", results['positions_failed_processing'])
+        print("Units:", results['reporting_unit_type'])
+        print("min_error:", results['min_error'])
+        print("max_error:", results['max_error'])
+        print("mean_error:", results['mean_error'])
+    else:
+        print("Validation Aborted by User.")
+        
+    kb = keyboard.Keyboard()
+    displayed_msg = visual.TextStim(win=win, pos=[0,0], height=0.05,
+        text="If satisfied with the validation results, press 'SPACE' to continue.\n\nAlternatively, press 'R' to re-calibrate")
+    displayed_msg.draw()
+    win.flip()
+
+    keys = kb.waitKeys(maxWait=float('inf'), keyList=['space', 'escape', 'r'])
+    if 'escape' in keys:
+        core.quit()
+    elif 'r' in keys:
+        calibrate_eyetracker(win)
+        validate_eyetracker(win)
+    kb.clearEvents()
 
 def read_block_cond(blocklist_file=params.BLOCKLIST_FILE):
     df_blocklist = pd.read_csv(blocklist_file)
@@ -147,9 +209,13 @@ def read_trial_cond(trial_cond):
 def prepare_stimulus(win):
     components = {}
     fixation_pt = visual.ImageStim(win=win, name='fixation_pt', units='deg', 
-        image='assets/fixation_pt.png', anchor='center', pos=(0, 0), size=[1],
+        image='assets/fixation_pt.png', anchor='center', pos=(0, 0), size=[params.FIX_SIZE],
         color=[1,1,1], colorSpace='rgb', opacity=None, texRes=128.0,
         interpolate=True, depth=-4.0)
+        
+    fixation_region = visual.Circle(win, lineColor='black', radius=3, units='deg')
+    
+    alert = sound.Sound('A', stereo=True)
     
     stim_left = visual.DotStim(win=win, name='stim_left', units='deg',
         nDots=params.N_DOTS, coherence=1, fieldPos=(-params.STIM_DIST, 0),
@@ -162,6 +228,8 @@ def prepare_stimulus(win):
         dotLife=params.DOT_LIFE, dir=90, speed=params.DOT_SPEED)
         
     components['fixation_pt'] = fixation_pt
+    components['fixation_region'] = fixation_region
+    components['alert'] = alert
     components['stim_left'] = stim_left
     components['stim_right'] = stim_right
     return components
@@ -222,6 +290,8 @@ def display_end_of_session(win):
 def run_practice(win, global_clock, trial_clock, output_file):
     """run practice"""
     kb = keyboard.Keyboard()
+    io_hub_server = ioHubConnection.ACTIVE_CONNECTION
+    eye_tracker = io_hub_server.getDevice('tracker')
     components = prepare_stimulus(win)
     
     # display instructions for practice
@@ -246,12 +316,20 @@ def run_practice(win, global_clock, trial_clock, output_file):
     # if this is a re-do practice
     is_redo = False
     
+    # start eye tracking
+    io_hub_server.clearEvents()
+    eye_tracker.setRecordingState(True)
+        
     # do practice until accuracy reaches 50%
     while (accuracy < 0.5):
-        # draw fixation point
+        
+        # draw the inintal fixation point
         for frameN in range(floor(params.FRAME_RATE * params.FIX_TIME)):
-            components['fixation_pt'].draw()
-            win.flip()
+            if ((params.FRAME_RATE*0.5) < frameN < (params.FRAME_RATE*0.5+10)) or (params.FRAME_RATE < frameN < (params.FRAME_RATE+10)):
+                win.flip()
+            else:
+                components['fixation_pt'].draw()
+                win.flip()
         
             keys = kb.getKeys()
             if 'escape' in keys:
@@ -266,6 +344,7 @@ def run_practice(win, global_clock, trial_clock, output_file):
                 
             update_stims(components, row)
             all_keys = []
+            looked_away = False
             kb.clock.reset()
             
             # draw stimuli
@@ -273,6 +352,7 @@ def run_practice(win, global_clock, trial_clock, output_file):
                 components['fixation_pt'].draw()
                 components['stim_left'].draw()
                 components['stim_right'].draw()
+                components['fixation_region'].draw()
                 win.flip()
                 keys = kb.getKeys()
                 if 'escape' in keys:
@@ -280,6 +360,11 @@ def run_practice(win, global_clock, trial_clock, output_file):
                 else:
                     all_keys.extend(keys)
                 kb.clearEvents()
+                
+                gaze_pos = eye_tracker.getLastGazePosition()
+                valid_gaze_pos = isinstance(gaze_pos, (tuple, list))
+                if valid_gaze_pos and components['fixation_region'].contains(gaze_pos):
+                    looked_away = True
                 
             # ISI
             for frameN in range(floor(params.FRAME_RATE * (row.isi/1000))):
@@ -289,6 +374,7 @@ def run_practice(win, global_clock, trial_clock, output_file):
                 components['fixation_pt'].draw()
                 components['stim_left'].draw()
                 components['stim_right'].draw()
+                components['fixation_region'].draw()
                 win.flip()
                 
                 keys = kb.getKeys()
@@ -297,6 +383,15 @@ def run_practice(win, global_clock, trial_clock, output_file):
                 else:
                     all_keys.extend(keys)
                 kb.clearEvents()
+                
+                gaze_pos = eye_tracker.getLastGazePosition()
+                valid_gaze_pos = isinstance(gaze_pos, (tuple, list))
+                if valid_gaze_pos and components['fixation_region'].contains(gaze_pos):
+                    looked_away = True
+            
+            # alert if participant failed to fixate
+            if looked_away:
+                components['alert'].play()
             
             # only consider the trials where speed has reached the desired
             if row.stim_duration <= params.STIM_TIME * 1000:
@@ -313,9 +408,11 @@ def run_practice(win, global_clock, trial_clock, output_file):
         
         # display end of practice messages
         if accuracy >= 0.5:
+            print('Accuracy of practice block: '+str(round(accuracy, 2))+', continue to experiment.')
             display_end_of_practice(win, redo = False, accuracy = accuracy)
         else:
             is_redo = True
+            print('Accuracy of practice block: '+str(round(accuracy, 2))+', re-do the practice.')
             display_end_of_practice(win, redo = True, accuracy = accuracy)
         
         
@@ -325,7 +422,7 @@ def run_trials(win, global_clock, trial_clock, output_file):
     components = prepare_stimulus(win)
     block_list = read_block_cond()
     
-    if block_list != 0:
+    if len(block_list) != 0:
         cols = read_trial_cond(block_list[0]).columns.values.tolist()
         cols.insert(1, 'block')
         cols.insert(2, 'trial')
@@ -340,11 +437,18 @@ def run_trials(win, global_clock, trial_clock, output_file):
     for trial_cond in block_list:
         conditions = read_trial_cond(trial_cond)
         df_block_data = pd.DataFrame(columns=cols)
+        
+        # keep track of accuracy
+        accuracy = 0
+        n_correct = 0
     
-        # draw fixation point
+        # draw the inintal fixation point
         for frameN in range(floor(params.FRAME_RATE * params.FIX_TIME)):
-            components['fixation_pt'].draw()
-            win.flip()
+            if ((params.FRAME_RATE*0.5) < frameN < (params.FRAME_RATE*0.5+10)) or (params.FRAME_RATE < frameN < (params.FRAME_RATE+10)):
+                win.flip()
+            else:
+                components['fixation_pt'].draw()
+                win.flip()
             
             keys = kb.getKeys()
             if 'escape' in keys:
@@ -356,9 +460,12 @@ def run_trials(win, global_clock, trial_clock, output_file):
         for index, row in conditions.iterrows():
             update_stims(components, row)
             all_keys = []
+            
+            # reset keyboard clock for reaction time
             kb.clock.reset()
             
             # draw stimuli
+            stimulus_onset_time = global_clock.getTime()
             for frameN in range(floor(params.FRAME_RATE * params.STIM_TIME)):
                 components['fixation_pt'].draw()
                 components['stim_left'].draw()
@@ -370,7 +477,8 @@ def run_trials(win, global_clock, trial_clock, output_file):
                 else:
                     all_keys.extend(keys)
                 kb.clearEvents()
-                
+            
+            stimulus_offset_time = global_clock.getTime()
             # ISI
             for frameN in range(floor(params.FRAME_RATE * params.ISI_TIME)):
                 components['stim_left'].coherence = 0
@@ -394,18 +502,30 @@ def run_trials(win, global_clock, trial_clock, output_file):
             new_row['trial'] = trial_n
             new_row['key_resp'] = [key.name for key in all_keys]
             new_row['key_resp.rt'] = [key.rt for key in all_keys]
+            new_row['stim_onset_time'] = stimulus_onset_time
+            new_row['stim_offset_time'] = stimulus_offset_time
             new_row = pd.DataFrame([new_row.to_dict()])
             df_block_data = pd.concat([df_block_data, new_row], ignore_index=True)
             
+            
+            if len(all_keys) == 0:
+                if row.correct_response == 'no_target':
+                    n_correct += 1
+            else:
+                if all_keys[0] == row.correct_response:
+                    n_correct += 1
             trial_n += 1
             
         # send data to file
         df_block_data.to_csv(output_file, mode='a', header=is_first_trial, index=False)
         is_first_trial = False
         print('Block '+str(block_n)+' completed. Data saved.')
+        print('Accuracy of block '+str(block_n)+': '+str(round(n_correct/trial_n, 2)))
         
         # display end of block info
-        if block_n % params.BLOCKS_PER_SESSION == 0:
+        if block_n == len(block_list):
+            return
+        elif block_n % params.BLOCKS_PER_SESSION == 0:
             display_end_of_session(win)
         else:
             display_end_of_block(win, block_n)
@@ -418,7 +538,7 @@ def run_outtro(win):
     kb = keyboard.Keyboard()
     
     displayed_msg = visual.TextStim(win=win, name='welcome_text',
-        text="End of experiment!\n\n\n\n\nPress 'SPACE' key to close",
+        text="End of experiment!\n\n\nThank you for your participation.\n\nPress 'SPACE' key to close",
         font='Open Sans',
         pos=(0, 0), height=0.05, wrapWidth=None, ori=0.0, 
         color='white', colorSpace='rgb', opacity=None, 

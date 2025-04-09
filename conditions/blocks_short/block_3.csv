@@ -1,0 +1,9 @@
+row_id,ori_left,ori_right,coherence_left,coherence_right,correct_response,condition
+0,270,90,0.2,0.9,right,0
+1,270,90,0.4,0.4,right,0
+2,270,90,0.2,0.9,right,0
+3,270,270,0.5,0.5,no_target,0
+4,90,270,0.2,0.9,left,0
+5,270,90,0.5,0.4,right,0
+6,90,270,0.4,0.4,left,0
+7,90,270,0.2,0.9,left,0
