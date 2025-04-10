@@ -1,6 +1,6 @@
 #MONITOR = 'M16'
-#MONITOR = 'Surface'
-MONITOR = 'Lab'
+MONITOR = 'Surface'
+#MONITOR = 'Lab'
 
 if MONITOR == 'M16':
     SCREEN_SIZE = [2560, 1600]
@@ -21,13 +21,13 @@ if IS_TESTING:
     DATA_DIR = 'test_data'
 else:
     DATA_DIR = 'data'
-#PRACTICE_BLOCK_FILE = 'conditions/practice_block.csv'
-#BLOCKLIST_FILE = 'conditions/block_list.csv'
-#N_PRACTICE = 150
+PRACTICE_BLOCK_FILE = 'conditions/practice_block.csv'
+BLOCKLIST_FILE = 'conditions/block_list.csv'
+N_PRACTICE = 150
 
-PRACTICE_BLOCK_FILE = 'conditions/practice_block_short.csv'
-BLOCKLIST_FILE = 'conditions/block_list_short.csv'
-N_PRACTICE = 20
+#PRACTICE_BLOCK_FILE = 'conditions/practice_block_short.csv'
+#BLOCKLIST_FILE = 'conditions/block_list_short.csv'
+#N_PRACTICE = 20
 
 BLOCKS_PER_SESSION = 9
 
@@ -62,9 +62,9 @@ STIM_TIME = 0.25
 ISI_TIME = 1.05 
 
 # Eye tracker settings
-USE_EYETRACKER = True
-#TRACKER = 'mouse'
-TRACKER = 'tobii'
+USE_EYETRACKER = False
+TRACKER = 'mouse'
+#TRACKER = 'tobii'
 
 # Trial settings
 SKIP_INTRO = False

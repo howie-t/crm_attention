@@ -81,6 +81,18 @@ def run_intro(win):
         
 def calibrate_eyetracker(win):
     """eyetracker calibration"""
+    # loading screen
+    kb = keyboard.Keyboard()
+    loading_msg = visual.TextStim(win=win, pos=[0,0], height=0.05,
+        text="Preparing calibration. Please wait....")
+    loading_msg.draw()
+    win.flip()
+
+    keys = kb.getKeys(keyList=['escape'])
+    if 'escape' in keys:
+        core.quit()
+    kb.clearEvents()
+    
     eyetracker_config = dict(name='tracker')
     devices_config = {}
     if params.TRACKER == 'mouse':
@@ -89,7 +101,7 @@ def calibrate_eyetracker(win):
                                             target_duration=1.5,
                                             target_delay=1.0,
                                             screen_background_color=(0, 0, 0),
-                                            type='NINE_POINTS',
+                                            type='FIVE_POINTS',
                                             unit_type=None,
                                             color_type=None,
                                             target_attributes=dict(outer_diameter=0.05,
@@ -129,6 +141,7 @@ def calibrate_eyetracker(win):
     
     io_hub_server = launchHubServer(window=win, **devices_config)
     eye_tracker = io_hub_server.getDevice('tracker')
+
     # Minimize the PsychoPy window if needed
     hideWindow(win)
     # Display calibration gfx window and run calibration.
@@ -213,7 +226,7 @@ def prepare_stimulus(win):
         color=[1,1,1], colorSpace='rgb', opacity=None, texRes=128.0,
         interpolate=True, depth=-4.0)
         
-    fixation_region = visual.Circle(win, lineColor='black', radius=3, units='deg')
+    fixation_region = visual.Circle(win, lineColor='black', radius=0.1, units='height')
     
     alert = sound.Sound('A', stereo=True)
     
@@ -290,9 +303,11 @@ def display_end_of_session(win):
 def run_practice(win, global_clock, trial_clock, output_file):
     """run practice"""
     kb = keyboard.Keyboard()
-    io_hub_server = ioHubConnection.ACTIVE_CONNECTION
-    eye_tracker = io_hub_server.getDevice('tracker')
     components = prepare_stimulus(win)
+    
+    if params.USE_EYETRACKER:
+        io_hub_server = ioHubConnection.ACTIVE_CONNECTION
+        eye_tracker = io_hub_server.getDevice('tracker')
     
     # display instructions for practice
     displayed_msg = visual.TextStim(win=win, pos=[0,0], height=0.05,
@@ -317,8 +332,9 @@ def run_practice(win, global_clock, trial_clock, output_file):
     is_redo = False
     
     # start eye tracking
-    io_hub_server.clearEvents()
-    eye_tracker.setRecordingState(True)
+    if params.USE_EYETRACKER:
+        io_hub_server.clearEvents()
+        eye_tracker.setRecordingState(True)
         
     # do practice until accuracy reaches 50%
     while (accuracy < 0.5):
@@ -344,7 +360,8 @@ def run_practice(win, global_clock, trial_clock, output_file):
                 
             update_stims(components, row)
             all_keys = []
-            looked_away = False
+            first_look = True
+            
             kb.clock.reset()
             
             # draw stimuli
@@ -352,7 +369,7 @@ def run_practice(win, global_clock, trial_clock, output_file):
                 components['fixation_pt'].draw()
                 components['stim_left'].draw()
                 components['stim_right'].draw()
-                components['fixation_region'].draw()
+#                components['fixation_region'].draw()
                 win.flip()
                 keys = kb.getKeys()
                 if 'escape' in keys:
@@ -361,10 +378,13 @@ def run_practice(win, global_clock, trial_clock, output_file):
                     all_keys.extend(keys)
                 kb.clearEvents()
                 
-                gaze_pos = eye_tracker.getLastGazePosition()
-                valid_gaze_pos = isinstance(gaze_pos, (tuple, list))
-                if valid_gaze_pos and components['fixation_region'].contains(gaze_pos):
-                    looked_away = True
+                if params.USE_EYETRACKER:
+                    gaze_pos = eye_tracker.getLastGazePosition()
+                    valid_gaze_pos = isinstance(gaze_pos, (tuple, list))
+                    if valid_gaze_pos and not(components['fixation_region'].contains(gaze_pos)):
+                        if first_look: # alert if participant failed to fixate and have not been warned in the current trial
+                            components['alert'].play()
+                            first_look = False
                 
             # ISI
             for frameN in range(floor(params.FRAME_RATE * (row.isi/1000))):
@@ -374,7 +394,7 @@ def run_practice(win, global_clock, trial_clock, output_file):
                 components['fixation_pt'].draw()
                 components['stim_left'].draw()
                 components['stim_right'].draw()
-                components['fixation_region'].draw()
+#                components['fixation_region'].draw()
                 win.flip()
                 
                 keys = kb.getKeys()
@@ -384,14 +404,13 @@ def run_practice(win, global_clock, trial_clock, output_file):
                     all_keys.extend(keys)
                 kb.clearEvents()
                 
-                gaze_pos = eye_tracker.getLastGazePosition()
-                valid_gaze_pos = isinstance(gaze_pos, (tuple, list))
-                if valid_gaze_pos and components['fixation_region'].contains(gaze_pos):
-                    looked_away = True
-            
-            # alert if participant failed to fixate
-            if looked_away:
-                components['alert'].play()
+                if params.USE_EYETRACKER:
+                    gaze_pos = eye_tracker.getLastGazePosition()
+                    valid_gaze_pos = isinstance(gaze_pos, (tuple, list))
+                    if valid_gaze_pos and not(components['fixation_region'].contains(gaze_pos)):
+                        if first_look: # alert if participant failed to fixate and have not been warned in the current trial
+                            components['alert'].play()
+                            first_look = False
             
             # only consider the trials where speed has reached the desired
             if row.stim_duration <= params.STIM_TIME * 1000:
@@ -414,6 +433,9 @@ def run_practice(win, global_clock, trial_clock, output_file):
             is_redo = True
             print('Accuracy of practice block: '+str(round(accuracy, 2))+', re-do the practice.')
             display_end_of_practice(win, redo = True, accuracy = accuracy)
+    
+    if params.USE_EYETRACKER:
+        eye_tracker.setRecordingState(False)
         
         
 def run_trials(win, global_clock, trial_clock, output_file):
@@ -421,6 +443,10 @@ def run_trials(win, global_clock, trial_clock, output_file):
     kb = keyboard.Keyboard()
     components = prepare_stimulus(win)
     block_list = read_block_cond()
+    
+    if params.USE_EYETRACKER:
+        io_hub_server = ioHubConnection.ACTIVE_CONNECTION
+        eye_tracker = io_hub_server.getDevice('tracker')
     
     if len(block_list) != 0:
         cols = read_trial_cond(block_list[0]).columns.values.tolist()
@@ -457,12 +483,19 @@ def run_trials(win, global_clock, trial_clock, output_file):
         
         # start trials
         trial_n = 0
+        
+        # start eye tracking
+        if params.USE_EYETRACKER:
+            io_hub_server.clearEvents()
+            eye_tracker.setRecordingState(True)
+       
         for index, row in conditions.iterrows():
             update_stims(components, row)
             all_keys = []
             
             # reset keyboard clock for reaction time
             kb.clock.reset()
+            first_look = True
             
             # draw stimuli
             stimulus_onset_time = global_clock.getTime()
@@ -477,6 +510,14 @@ def run_trials(win, global_clock, trial_clock, output_file):
                 else:
                     all_keys.extend(keys)
                 kb.clearEvents()
+                
+                if params.USE_EYETRACKER:
+                    gaze_pos = eye_tracker.getLastGazePosition()
+                    valid_gaze_pos = isinstance(gaze_pos, (tuple, list))
+                    if valid_gaze_pos and not(components['fixation_region'].contains(gaze_pos)):
+                        if first_look: # alert if participant failed to fixate and have not been warned in the current trial
+                            components['alert'].play()
+                            first_look = False
             
             stimulus_offset_time = global_clock.getTime()
             # ISI
@@ -495,6 +536,14 @@ def run_trials(win, global_clock, trial_clock, output_file):
                 else:
                     all_keys.extend(keys)
                 kb.clearEvents()
+                
+                if params.USE_EYETRACKER:
+                    gaze_pos = eye_tracker.getLastGazePosition()
+                    valid_gaze_pos = isinstance(gaze_pos, (tuple, list))
+                    if valid_gaze_pos and not(components['fixation_region'].contains(gaze_pos)):
+                        if first_look: # alert if participant failed to fixate and have not been warned in the current trial
+                            components['alert'].play()
+                            first_look = False
             
             # save response data to dataframe
             new_row = row.copy()
@@ -515,7 +564,10 @@ def run_trials(win, global_clock, trial_clock, output_file):
                 if all_keys[0] == row.correct_response:
                     n_correct += 1
             trial_n += 1
-            
+        
+        if params.USE_EYETRACKER:
+            eye_tracker.setRecordingState(False)
+        
         # send data to file
         df_block_data.to_csv(output_file, mode='a', header=is_first_trial, index=False)
         is_first_trial = False
