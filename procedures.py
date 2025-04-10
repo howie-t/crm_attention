@@ -45,7 +45,7 @@ def initialise_exp():
 def setup_window():
     """set up the window"""
     mon = monitors.Monitor(params.MONITOR)
-    win = visual.Window(size=params.SCREEN_SIZE, fullscr=True, screen=0,
+    win = visual.Window(size=params.SCREEN_SIZE, fullscr=True, screen=1,
         monitor=mon, units=params.UNITS)
     if params.FRAME_RATE == None:
         params.FRAME_RATE = win.getActualFrameRate(infoMsg='')

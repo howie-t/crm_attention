@@ -1,6 +1,6 @@
 #MONITOR = 'M16'
-MONITOR = 'Surface'
-#MONITOR = 'Lab'
+#MONITOR = 'Surface'
+MONITOR = 'Lab'
 
 if MONITOR == 'M16':
     SCREEN_SIZE = [2560, 1600]
@@ -47,9 +47,12 @@ N_DOTS = 100 # 5 ~ 50 per deg^2, 153 deg^2 => 2500 dots
 
 if MONITOR == 'Lab':
     FIX_SIZE = 1.3
-    STIM_SIZE = 10
-    STIM_DIST = 14
-    DOT_SIZE = 7
+#    STIM_SIZE = 10
+#    STIM_DIST = 14
+#    DOT_SIZE = 7
+    STIM_SIZE = 12
+    STIM_DIST = 16
+    DOT_SIZE = 8
     DOT_SPEED = 0.4
     DOT_LIFE = 3
     N_DOTS = 70
@@ -63,12 +66,12 @@ ISI_TIME = 1.05
 
 # Eye tracker settings
 USE_EYETRACKER = False
-TRACKER = 'mouse'
-#TRACKER = 'tobii'
+#TRACKER = 'mouse'
+TRACKER = 'tobii'
 
 # Trial settings
 SKIP_INTRO = False
-DO_PRACTICE = True
+DO_PRACTICE = False
 DO_TRIALS = True
 
 # Text 
