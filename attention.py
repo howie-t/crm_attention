@@ -23,7 +23,7 @@ if __name__ == '__main__':
         run_intro(win)
     
     if params.USE_EYETRACKER:
-        calibrate_eyetracker(win)  
+        calibrate_eyetracker(win)
         validate_eyetracker(win)
 
     if params.DO_PRACTICE:

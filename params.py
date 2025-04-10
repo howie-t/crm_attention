@@ -71,7 +71,7 @@ TRACKER = 'tobii'
 
 # Trial settings
 SKIP_INTRO = False
-DO_PRACTICE = False
+DO_PRACTICE = True
 DO_TRIALS = True
 
 # Text 

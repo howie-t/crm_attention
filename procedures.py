@@ -351,6 +351,22 @@ def run_practice(win, global_clock, trial_clock, output_file):
             if 'escape' in keys:
                 core.quit()
             kb.clearEvents()
+            
+        # start with ISI
+        for frameN in range(floor(params.FRAME_RATE * (1850/1000))):
+            components['stim_left'].coherence = 0
+            components['stim_right'].coherence = 0
+                    
+            components['fixation_pt'].draw()
+            components['stim_left'].draw()
+            components['stim_right'].draw()
+#           components['fixation_region'].draw()
+            win.flip()
+                
+            keys = kb.getKeys()
+            if 'escape' in keys:
+                core.quit()
+            kb.clearEvents()
         
         # start trials
         for index, row in conditions.iterrows():
@@ -443,6 +459,7 @@ def run_trials(win, global_clock, trial_clock, output_file):
     kb = keyboard.Keyboard()
     components = prepare_stimulus(win)
     block_list = read_block_cond()
+    random.shuffle(block_list)
     
     if params.USE_EYETRACKER:
         io_hub_server = ioHubConnection.ACTIVE_CONNECTION
@@ -476,6 +493,21 @@ def run_trials(win, global_clock, trial_clock, output_file):
                 components['fixation_pt'].draw()
                 win.flip()
             
+            keys = kb.getKeys()
+            if 'escape' in keys:
+                core.quit()
+            kb.clearEvents()
+            
+        # start with ISI
+        for frameN in range(floor(params.FRAME_RATE * params.ISI_TIME)):
+            components['stim_left'].coherence = 0
+            components['stim_right'].coherence = 0
+                    
+            components['fixation_pt'].draw()
+            components['stim_left'].draw()
+            components['stim_right'].draw()
+            win.flip()
+                
             keys = kb.getKeys()
             if 'escape' in keys:
                 core.quit()
