@@ -52,32 +52,6 @@ def setup_window():
 #    win.setMouseVisible(False)
     win.hideMessage()
     return win
-
-def run_intro(win):
-    """display introduction and instructions"""
-    kb = keyboard.Keyboard()
-    
-    displayed_msg = visual.TextStim(win=win, pos=[0,0], height=0.05,
-        text=params.WELCOME_TEXT)
-    displayed_msg.draw()
-    win.flip()
-
-    keys = kb.waitKeys(maxWait=float('inf'), keyList=['space', 'escape'])
-    if 'escape' in keys:
-        core.quit()
-    kb.clearEvents()
-    
-    # turning pages for instructions
-    i = 0
-    while i < len(params.INS_TEXT):
-        displayed_msg.setText(params.INS_TEXT[i])
-        displayed_msg.draw()
-        win.flip()
-        keys = kb.waitKeys(maxWait=float('inf'), keyList=['space', 'escape'])
-        if 'escape' in keys:
-            core.quit()
-        kb.clearEvents()
-        i += 1
         
 def calibrate_eyetracker(win):
     """eyetracker calibration"""
@@ -300,6 +274,76 @@ def display_end_of_session(win):
         core.quit()
     kb.clearEvents()
 
+def run_intro(win):
+    """display introduction and instructions"""
+    kb = keyboard.Keyboard()
+    components = prepare_stimulus(win)
+    
+    displayed_msg = visual.TextStim(win=win, pos=[0,0], height=0.05,
+        text=params.WELCOME_TEXT)
+    displayed_msg.draw()
+    win.flip()
+
+    keys = kb.waitKeys(maxWait=float('inf'), keyList=['space', 'escape'])
+    if 'escape' in keys:
+        core.quit()
+    kb.clearEvents()
+    
+    # page 1
+    displayed_msg.text = "Throughout the experiment, you need to fixate your \
+    eyes on the center of the screen, where you'll see a symbol as below:\n\n\
+    \n\n\n\n\n If you moves your eyes away from the center, you will hear a beep \
+    from the speakers to remind you to re-fixate.\n\n Press 'SPACE' to continue."
+    
+    displayed_msg.draw()
+    components['fixation_pt'].draw()
+    win.flip()
+    
+    # page 2
+    displayed_msg.text = "During the experiment, you will see two circle areas on \
+    each side of the screen with many dots moving in random directions, as \
+    displayed below:\n\n\n\n\n\n\n\n\n\n\Press 'SPACE' to conitnue."
+    
+    components['stim_left'].coherence = 0
+    components['stim_right'].coherence = 0
+    displayed_msg.draw()
+    components['stim_left'].draw()
+    win.flip()
+    
+    keys = kb.waitKeys(maxWait=float('inf'), keyList=['space', 'escape'])
+    if 'escape' in keys:
+        core.quit()
+    kb.clearEvents()
+    
+    # page 3
+    displayed_msg.text = "If you see the stimuli below, you should press 'right' \
+    arrow key, because the dots on the right are moving upwards.\n\n\n\n\n\n\n\n\
+    Make the correct response to continue."
+    
+    components['stim_left'].dir = 270
+
+    displayed_msg.draw()
+    components['stim_left'].draw()
+    win.flip()
+    
+    
+    keys = kb.waitKeys(maxWait=float('inf'), keyList=['space', 'escape'])
+    if 'escape' in keys:
+        core.quit()
+    kb.clearEvents()
+    
+    # turning pages for instructions
+    i = 0
+    while i < len(params.INS_TEXT):
+        displayed_msg.setText(params.INS_TEXT[i])
+        displayed_msg.draw()
+        win.flip()
+        keys = kb.waitKeys(maxWait=float('inf'), keyList=['space', 'escape'])
+        if 'escape' in keys:
+            core.quit()
+        kb.clearEvents()
+        i += 1
+        
 def run_practice(win, global_clock, trial_clock, output_file):
     """run practice"""
     kb = keyboard.Keyboard()
