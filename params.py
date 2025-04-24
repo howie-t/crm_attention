@@ -1,6 +1,6 @@
-MONITOR = 'M16'
+#MONITOR = 'M16'
 #MONITOR = 'Surface'
-#MONITOR = 'Lab'
+MONITOR = 'Lab'
 
 if MONITOR == 'M16':
     SCREEN_SIZE = [2560, 1600]
@@ -21,9 +21,9 @@ if IS_TESTING:
     DATA_DIR = 'test_data'
 else:
     DATA_DIR = 'data'
-PRACTICE_BLOCK_FILE = 'conditions/practice_block.csv'
-BLOCKLIST_FILE = 'conditions/block_list.csv'
-N_PRACTICE = 150
+PRACTICE_BLOCK_FILE = 'conditions2/practice_block.csv'
+BLOCKLIST_FILE = 'conditions2/block_list.csv'
+N_PRACTICE = 144
 
 #PRACTICE_BLOCK_FILE = 'conditions/practice_block_short.csv'
 #BLOCKLIST_FILE = 'conditions/block_list_short.csv'
@@ -71,7 +71,7 @@ TRACKER = 'tobii'
 
 # Trial settings
 SKIP_INTRO = False
-DO_PRACTICE = True
+DO_PRACTICE = False
 DO_TRIALS = True
 
 # EEG Triggers

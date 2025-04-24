@@ -10,10 +10,11 @@ from psychopy.iohub.client.eyetracker.validation import TargetStim
 import random, os, csv
 import pandas as pd
 import numpy as np
-import pyxid2 as pyxid
 from math import floor
 # import modules
 import params
+if params.USE_EEG:
+    import pyxid2 as pyxid
 
 # Define the function to send triggers to serial port
 def send_triggers(device, value):
@@ -77,7 +78,7 @@ def calibrate_eyetracker(win):
     
     # instruction screen
     instruction_msg = visual.TextStim(win=win, pos=[0,0], height=0.05,
-        text="Before starting the experiment, we need to calibrate the eye-tracker. During the calibration, please do not move your head and follow the dot on the screen with your eyes.\n\n\n\n\n\n\n\nPress 'SPACE' to start")
+        text=params.EYETRACKER_CALIBRATION_TEXT)
     instruction_msg.draw()
     win.flip()
     keys = kb.waitKeys(keyList=['space', 'escape'])
@@ -87,7 +88,7 @@ def calibrate_eyetracker(win):
     
     # loading screen
     loading_msg = visual.TextStim(win=win, pos=[0,0], height=0.05,
-        text="Preparing calibration. Please wait....")
+        text=params.CALIBRATION_PREP_TEXT)
     loading_msg.draw()
     win.flip()
 
@@ -202,7 +203,7 @@ def validate_eyetracker(win):
         
     kb = keyboard.Keyboard()
     displayed_msg = visual.TextStim(win=win, pos=[0,0], height=0.05,
-        text="If satisfied with the validation results, press 'SPACE' to continue.\n\nAlternatively, press 'R' to re-calibrate")
+        text=params.CALIBRATION_RESULT_TEXT)
     displayed_msg.draw()
     win.flip()
 
@@ -492,18 +493,6 @@ def run_intro(win):
     if 'escape' in keys:
         core.quit()
     kb.clearEvents()
-
-#    # turning pages for instructions
-#    i = 0
-#    while i < len(params.INS_TEXT):
-#        displayed_msg.setText(params.INS_TEXT[i])
-#        displayed_msg.draw()
-#        win.flip()
-#        keys = kb.waitKeys(maxWait=float('inf'), keyList=['space', 'escape'])
-#        if 'escape' in keys:
-#            core.quit()
-#        kb.clearEvents()
-#        i += 1
 
 def run_easy_practice(win):
     """
@@ -815,6 +804,8 @@ def run_practice(win, global_clock, trial_clock, output_file):
         
         accuracy = n_correct / n_trials
         
+        
+        
         # display end of practice messages
         if accuracy >= 0.5:
             print('Accuracy of practice block: '+str(round(accuracy, 2))+', continue to experiment.')
@@ -920,9 +911,9 @@ def run_trials(win, global_clock, trial_clock, output_file, eeg_device):
                 components['stim_left'].draw()
                 components['stim_right'].draw()
                 if params.USE_EEG and is_first_frame:
-                    if row.correct_response = 'left':
+                    if row.correct_response == 'left':
                         win.callOnFlip(send_triggers, eeg_device, params.TRIG_STIM_ON_LEFT)
-                    elif row.correct_response = 'right':
+                    elif row.correct_response == 'right':
                         win.callOnFlip(send_triggers, eeg_device, params.TRIG_STIM_ON_RIGHT)
                     else:
                         win.callOnFlip(send_triggers, eeg_device, params.TRIG_STIM_ON_NO_TARGET)
@@ -964,9 +955,9 @@ def run_trials(win, global_clock, trial_clock, output_file, eeg_device):
                 components['stim_right'].draw()
                 
                 if params.USE_EEG and is_first_frame:
-                    if row.correct_response = 'left':
+                    if row.correct_response == 'left':
                         win.callOnFlip(send_triggers, eeg_device, params.TRIG_STIM_OFF_LEFT)
-                    elif row.correct_response = 'right':
+                    elif row.correct_response == 'right':
                         win.callOnFlip(send_triggers, eeg_device, params.TRIG_STIM_OFF_RIGHT)
                     else:
                         win.callOnFlip(send_triggers, eeg_device, params.TRIG_STIM_OFF_NO_TARGET)
