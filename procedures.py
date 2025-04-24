@@ -10,9 +10,27 @@ from psychopy.iohub.client.eyetracker.validation import TargetStim
 import random, os, csv
 import pandas as pd
 import numpy as np
+import pyxid2 as pyxid
 from math import floor
 # import modules
 import params
+
+# Define the function to send triggers to serial port
+def send_triggers(device, value):
+    """send value as hardware trigger"""
+    device.activate_line(bitmask=value)
+
+def setup_eeg():
+    devices = pyxid.get_xid_devices()
+    if not devices:
+        print("No XID devices found")
+        core.quit()
+    dev = devices[0]
+    print("Uding ", dev)
+    
+    dev.set_pulse_duration(5)
+    
+    return dev
 
 def initialise_exp():
     """
@@ -55,8 +73,19 @@ def setup_window():
         
 def calibrate_eyetracker(win):
     """eyetracker calibration"""
-    # loading screen
     kb = keyboard.Keyboard()
+    
+    # instruction screen
+    instruction_msg = visual.TextStim(win=win, pos=[0,0], height=0.05,
+        text="Before starting the experiment, we need to calibrate the eye-tracker. During the calibration, please do not move your head and follow the dot on the screen with your eyes.\n\n\n\n\n\n\n\nPress 'SPACE' to start")
+    instruction_msg.draw()
+    win.flip()
+    keys = kb.waitKeys(keyList=['space', 'escape'])
+    if 'escape' in keys:
+        core.quit()
+    kb.clearEvents()
+    
+    # loading screen
     loading_msg = visual.TextStim(win=win, pos=[0,0], height=0.05,
         text="Preparing calibration. Please wait....")
     loading_msg.draw()
@@ -228,6 +257,29 @@ def update_stims(components, condition):
     components['stim_right'].coherence = condition.coherence_right
     components['stim_right'].dir = condition.ori_right
 
+def display_end_of_easy_practice(win, redo, accuracy):
+    """display end of block information"""
+    kb = keyboard.Keyboard()
+    override = False # allows the experimenter to overwrite redo practice
+    
+    if redo:
+        displayed_msg = visual.TextStim(win=win, pos=[0,0], height=0.05,
+        text="It was close!!\nYour accuracy was: " + str(round(accuracy,2)) + "\n\nYou can re-attempt the practice.\n\n\n\n\nPress 'Space' to start")
+    else:
+        displayed_msg = visual.TextStim(win=win, pos=[0,0], height=0.05,
+        text="Good job!!\nYour accuracy was: " + str(round(accuracy,2)) + "\n\n\n\n\nPress 'Space' to continue")
+    displayed_msg.draw()
+    win.flip()
+    
+    keys = kb.waitKeys(maxWait=float('inf'), keyList=['space', 's', 'escape'])
+    if 'escape' in keys:
+        core.quit()
+    elif 's' in keys:
+        override = True
+    kb.clearEvents()
+    
+    return override
+    
 def display_end_of_practice(win, redo, accuracy):
     """display end of block information"""
     kb = keyboard.Keyboard()
@@ -279,7 +331,7 @@ def run_intro(win):
     kb = keyboard.Keyboard()
     components = prepare_stimulus(win)
     
-    displayed_msg = visual.TextStim(win=win, pos=[0,0], height=0.05,
+    displayed_msg = visual.TextStim(win=win, pos=[0,0], height=0.05, wrapWidth=1.5,
         text=params.WELCOME_TEXT)
     displayed_msg.draw()
     win.flip()
@@ -290,62 +342,337 @@ def run_intro(win):
     kb.clearEvents()
     
     # page 1
-    displayed_msg.text = "Throughout the experiment, you need to fixate your \
-    eyes on the center of the screen, where you'll see a symbol as below:\n\n\
-    \n\n\n\n\n If you moves your eyes away from the center, you will hear a beep \
-    from the speakers to remind you to re-fixate.\n\n Press 'SPACE' to continue."
+    displayed_msg.text = ("Throughout the experiment, you need to fixate your "
+        "eyes on the center of the screen, where you'll see a symbol as below: "
+        "\n\n\n\n\n\n\nIf you move your eyes away from the center, you will hear "
+        "a beep from the speakers to remind you to re-fixate.\n\nPress 'SPACE' "
+        "to continue.")
     
     displayed_msg.draw()
     components['fixation_pt'].draw()
     win.flip()
     
+    keys = kb.waitKeys(maxWait=float('inf'), keyList=['space', 'escape'])
+    if 'escape' in keys:
+        core.quit()
+    kb.clearEvents()
+    
     # page 2
-    displayed_msg.text = "During the experiment, you will see two circle areas on \
-    each side of the screen with many dots moving in random directions, as \
-    displayed below:\n\n\n\n\n\n\n\n\n\n\Press 'SPACE' to conitnue."
+    displayed_msg.text = ("During the experiment, you will see two circle areas "
+        "on each side of the screen with many dots moving in random directions, "
+        "as displayed below:\n\n\n\n\n\n\n\n\nPress 'SPACE' to conitnue.")
     
     components['stim_left'].coherence = 0
     components['stim_right'].coherence = 0
-    displayed_msg.draw()
-    components['stim_left'].draw()
-    win.flip()
     
-    keys = kb.waitKeys(maxWait=float('inf'), keyList=['space', 'escape'])
-    if 'escape' in keys:
-        core.quit()
-    kb.clearEvents()
-    
-    # page 3
-    displayed_msg.text = "If you see the stimuli below, you should press 'right' \
-    arrow key, because the dots on the right are moving upwards.\n\n\n\n\n\n\n\n\
-    Make the correct response to continue."
-    
-    components['stim_left'].dir = 270
-
-    displayed_msg.draw()
-    components['stim_left'].draw()
-    win.flip()
-    
-    
-    keys = kb.waitKeys(maxWait=float('inf'), keyList=['space', 'escape'])
-    if 'escape' in keys:
-        core.quit()
-    kb.clearEvents()
-    
-    # turning pages for instructions
-    i = 0
-    while i < len(params.INS_TEXT):
-        displayed_msg.setText(params.INS_TEXT[i])
+    while True:
         displayed_msg.draw()
+        components['stim_left'].draw()
+        components['stim_right'].draw()
         win.flip()
-        keys = kb.waitKeys(maxWait=float('inf'), keyList=['space', 'escape'])
+        
+        keys = kb.getKeys(keyList=['space', 'escape'])
         if 'escape' in keys:
             core.quit()
-        kb.clearEvents()
-        i += 1
+        elif 'space' in keys:
+            kb.clearEvents()
+            break
+    
+    # page 3
+    displayed_msg.text = ("Every 1300 milliseconds, the dots on each side will "
+        "move coherently in either upward or downward direction. For instance, "
+        "in the example below, the dots on the left are moving upwards, and "
+        "the dots on the right are moving downwards.\n\n\n\n\n\n\n\n\n\n\n"
+        "Press 'SPACE' to continue.")
+    
+    components['stim_left'].dir = 90
+    components['stim_right'].dir = 270
+    components['stim_left'].coherence = 0.7
+    components['stim_right'].coherence = 0.7
+    
+    while True:
+        displayed_msg.draw()
+        components['stim_left'].draw()
+        components['stim_right'].draw()
+        win.flip()
         
+        keys = kb.getKeys(keyList=['space', 'escape'])
+        if 'escape' in keys:
+            core.quit()
+        elif 'space' in keys:
+            kb.clearEvents()
+            break
+    
+    # page 4
+    displayed_msg.text = ("Your objective is to indicate (with the arrow keys "
+        "on the keyboard) the side where the dots are moving upwards. For "
+        "example, if you see the stimuli below, you should press 'left' arrow "
+        "key, because the dots on the left are moving upwards.\n\n\n\n\n\n\n\n\n\n\n"
+        "Make the correct choice to continue")
+    
+    components['stim_left'].dir = 90
+    components['stim_right'].dir = 270
+    components['stim_left'].coherence = 0.7
+    components['stim_right'].coherence = 0.7
+
+    while True:
+        displayed_msg.draw()
+        components['stim_left'].draw()
+        components['stim_right'].draw()
+        win.flip()
+        
+        keys = kb.getKeys(keyList=['left', 'escape'])
+        if 'escape' in keys:
+            core.quit()
+        elif 'left' in keys:
+            kb.clearEvents()
+            break
+            
+    # page 5
+    displayed_msg.text = ("If you see the stimuli below, you should press "
+        "'right' arrow key, because the dots on the right are moving upwards."
+        "\n\n\n\n\n\n\n\n\n\nMake the correct choice to continue")
+    
+    components['stim_left'].dir = 270
+    components['stim_right'].dir = 90
+    components['stim_left'].coherence = 0.7
+    components['stim_right'].coherence = 0.7
+
+    while True:
+        displayed_msg.draw()
+        components['stim_left'].draw()
+        components['stim_right'].draw()
+        win.flip()
+        
+        keys = kb.getKeys(keyList=['right', 'escape'])
+        if 'escape' in keys:
+            core.quit()
+        elif 'right' in keys:
+            kb.clearEvents()
+            break
+            
+    # page 5
+    displayed_msg.text = ("If you see the stimuli below, you should not press "
+        "any keys,because the dots on both sides are moving downwards."
+        "\n\n\n\n\n\n\n\n\n\nPress 'SPACE' to continue")
+    
+    components['stim_left'].dir = 270
+    components['stim_right'].dir = 270
+    components['stim_left'].coherence = 0.7
+    components['stim_right'].coherence = 0.7
+
+    while True:
+        displayed_msg.draw()
+        components['stim_left'].draw()
+        components['stim_right'].draw()
+        win.flip()
+        
+        keys = kb.getKeys(keyList=['space', 'escape'])
+        if 'escape' in keys:
+            core.quit()
+        elif 'space' in keys:
+            kb.clearEvents()
+            break
+    
+    # page 6
+    displayed_msg.text = ("Remember, the dots are never moving upwards on both "
+        "sides at the same time, so you should never press 'left' and 'right' "
+        "arrow keys at the same time\n\n\n\n\nPress 'SPACE' to "
+        "continue")
+    
+    components['stim_left'].dir = 270
+    components['stim_right'].dir = 90
+    components['stim_left'].coherence = 0.7
+    components['stim_right'].coherence = 0.7
+    
+    displayed_msg.draw()
+    win.flip()
+        
+    keys = kb.waitKeys(keyList=['space', 'escape'])
+    if 'escape' in keys:
+        core.quit()
+    kb.clearEvents()
+
+#    # turning pages for instructions
+#    i = 0
+#    while i < len(params.INS_TEXT):
+#        displayed_msg.setText(params.INS_TEXT[i])
+#        displayed_msg.draw()
+#        win.flip()
+#        keys = kb.waitKeys(maxWait=float('inf'), keyList=['space', 'escape'])
+#        if 'escape' in keys:
+#            core.quit()
+#        kb.clearEvents()
+#        i += 1
+
+def run_easy_practice(win):
+    """
+    run an easy practice, used to ensure the participant understood the task,
+    it contains 12 trials, 4 left, 4 right and 4 with no target. The cohrence
+    is constant, at 0.7; and the stimuli last 750ms with 1850ms of ISI. As the
+    task should be very simple, it requires 90% accuracy to continue.
+    """
+    kb = keyboard.Keyboard()
+    components = prepare_stimulus(win)
+    
+    if params.USE_EYETRACKER:
+        io_hub_server = ioHubConnection.ACTIVE_CONNECTION
+        eye_tracker = io_hub_server.getDevice('tracker')
+    
+    displayed_msg = visual.TextStim(win=win, pos=[0,0], height=0.05,
+        text="We'll start with an easy practice first, to ensure you understood the task.\n\n\n\nPress 'SPACE' to start")
+    displayed_msg.draw()
+    win.flip()
+    
+    keys = kb.waitKeys(maxWait=float('inf'), keyList=['space', 'escape'])
+    if 'escape' in keys:
+        core.quit()
+    kb.clearEvents()
+    
+    # keep track of accuracy
+    accuracy = 0
+    n_correct = 0
+    n_trials = 0
+    
+    # start eye tracking
+    if params.USE_EYETRACKER:
+        io_hub_server.clearEvents()
+        eye_tracker.setRecordingState(True)
+        
+    # do practice until accuracy reaches 100%
+    while (accuracy < 0.9):
+        correct_answers = ['left'] * 4 + ['right'] * 4 + ['no_target'] * 4
+        random.shuffle(correct_answers)
+    
+        # draw the initial fixation point
+        for frameN in range(floor(params.FRAME_RATE * params.FIX_TIME)):
+            if ((params.FRAME_RATE*0.5) < frameN < (params.FRAME_RATE*0.5+10)) or (params.FRAME_RATE < frameN < (params.FRAME_RATE+10)):
+                win.flip()
+            else:
+                components['fixation_pt'].draw()
+                win.flip()
+        
+            keys = kb.getKeys()
+            if 'escape' in keys:
+                core.quit()
+            kb.clearEvents()
+    
+        # start with ISI
+        for frameN in range(floor(params.FRAME_RATE * (1850/1000))):
+            components['stim_left'].coherence = 0
+            components['stim_right'].coherence = 0
+                    
+            components['fixation_pt'].draw()
+            components['stim_left'].draw()
+            components['stim_right'].draw()
+            win.flip()
+                
+            keys = kb.getKeys()
+            if 'escape' in keys:
+                core.quit()
+            kb.clearEvents()
+    
+        # start trial
+        for correct_answer in correct_answers:
+            n_trials += 1
+        
+            components['stim_left'].coherence = 0.7
+            components['stim_right'].coherence = 0.7
+            if correct_answer == 'left':
+                components['stim_left'].dir = 90
+                components['stim_right'].dir = 270
+            elif correct_answer == 'right':
+                components['stim_left'].dir = 270
+                components['stim_right'].dir = 90
+            else:
+                components['stim_left'].dir = 270
+                components['stim_right'].dir = 270
+        
+            all_keys = []
+            
+            # reset keyboard clock for reaction time
+            kb.clock.reset()
+            first_look = True
+            
+            # draw stimuli
+            for frameN in range(floor(params.FRAME_RATE * (750/1000))):
+                components['fixation_pt'].draw()
+                components['stim_left'].draw()
+                components['stim_right'].draw()
+                win.flip()
+                keys = kb.getKeys()
+                if 'escape' in keys:
+                    core.quit()
+                else:
+                    all_keys.extend(keys)
+                    kb.clearEvents()
+                
+                if params.USE_EYETRACKER:
+                    gaze_pos = eye_tracker.getLastGazePosition()
+                    valid_gaze_pos = isinstance(gaze_pos, (tuple, list))
+                    if valid_gaze_pos and not(components['fixation_region'].contains(gaze_pos)):
+                        if first_look: # alert if participant failed to fixate and have not been warned in the current trial
+                            components['alert'].play()
+                            print('trial ' + str(n_trials) + ' looked away')
+                            first_look = False
+                
+            # ISI
+            for frameN in range(floor(params.FRAME_RATE * (1850/1000))):
+                components['stim_left'].coherence = 0
+                components['stim_right'].coherence = 0
+                    
+                components['fixation_pt'].draw()
+                components['stim_left'].draw()
+                components['stim_right'].draw()
+                win.flip()
+                
+                keys = kb.getKeys()
+                if 'escape' in keys:
+                    core.quit()
+                else:
+                    all_keys.extend(keys)
+                kb.clearEvents()
+                
+                if params.USE_EYETRACKER:
+                    gaze_pos = eye_tracker.getLastGazePosition()
+                    valid_gaze_pos = isinstance(gaze_pos, (tuple, list))
+                    if valid_gaze_pos and not(components['fixation_region'].contains(gaze_pos)):
+                        if first_look: # alert if participant failed to fixate and have not been warned in the current trial
+                            components['alert'].play()
+                            print('trial ' + str(n_trials) + ' looked away')
+                            first_look = False
+        
+            # calculate accuracy
+            if len(all_keys) == 0:
+                if correct_answer == 'no_target':
+                    n_correct += 1
+            else:
+                if all_keys[0] == correct_answer:
+                    n_correct += 1
+                
+        accuracy = n_correct / n_trials
+        
+        # display end of practice messages
+        if accuracy >= 0.9:
+            print('Accuracy of easy practice block: '+str(round(accuracy, 2))+', continue to hard practice.')
+            override = display_end_of_easy_practice(win, redo = False, accuracy = accuracy)
+        else:
+            print('Accuracy of easy practice block: '+str(round(accuracy, 2))+', re-do the practice.')
+            override = display_end_of_easy_practice(win, redo = True, accuracy = accuracy)
+        
+        if override:
+            break
+    
+    if params.USE_EYETRACKER:
+        eye_tracker.setRecordingState(False)
+    
+    
 def run_practice(win, global_clock, trial_clock, output_file):
     """run practice"""
+    # run an easy practice first - slow speed, high coherence, to ensure the
+    # participant understood the task, requires 100% accuracy to pass
+    run_easy_practice(win)
+    
     kb = keyboard.Keyboard()
     components = prepare_stimulus(win)
     
@@ -355,7 +682,7 @@ def run_practice(win, global_clock, trial_clock, output_file):
     
     # display instructions for practice
     displayed_msg = visual.TextStim(win=win, pos=[0,0], height=0.05,
-        text="We'll start with a practice for the task.\n\nDuring the practice, the difficulty and speed will gradually increase.\n\nYou will need to achieve 50% accuracy during the fastest speed before continuing the experiment.\n\n\n\n\nPress 'SPACE' to start")
+        text="Now we'll do a more challenging practice.\n\nDuring the practice, the difficulty and speed will gradually increase.\n\nYou will need to achieve 50% accuracy during the fastest speed before continuing the experiment.\n\n\n\n\nPress 'SPACE' to start")
     displayed_msg.draw()
     win.flip()
 
@@ -420,9 +747,10 @@ def run_practice(win, global_clock, trial_clock, output_file):
                 
             update_stims(components, row)
             all_keys = []
-            first_look = True
             
+            # reset keyboard clock for reaction time
             kb.clock.reset()
+            first_look = True
             
             # draw stimuli
             for frameN in range(floor(params.FRAME_RATE * (row.stim_duration/1000))):
@@ -444,6 +772,7 @@ def run_practice(win, global_clock, trial_clock, output_file):
                     if valid_gaze_pos and not(components['fixation_region'].contains(gaze_pos)):
                         if first_look: # alert if participant failed to fixate and have not been warned in the current trial
                             components['alert'].play()
+                            print('trial ' + str(index) + ' looked away')
                             first_look = False
                 
             # ISI
@@ -470,6 +799,7 @@ def run_practice(win, global_clock, trial_clock, output_file):
                     if valid_gaze_pos and not(components['fixation_region'].contains(gaze_pos)):
                         if first_look: # alert if participant failed to fixate and have not been warned in the current trial
                             components['alert'].play()
+                            print('trial ' + str(index) + ' looked away')
                             first_look = False
             
             # only consider the trials where speed has reached the desired
@@ -498,7 +828,7 @@ def run_practice(win, global_clock, trial_clock, output_file):
         eye_tracker.setRecordingState(False)
         
         
-def run_trials(win, global_clock, trial_clock, output_file):
+def run_trials(win, global_clock, trial_clock, output_file, eeg_device):
     """run trials"""
     kb = keyboard.Keyboard()
     components = prepare_stimulus(win)
@@ -528,7 +858,14 @@ def run_trials(win, global_clock, trial_clock, output_file):
         # keep track of accuracy
         accuracy = 0
         n_correct = 0
-    
+        
+        # send block start triggers for EEG
+        if params.USE_EEG:
+            if conditions.condtion.iloc[0] == 0:
+                send_triggers(eeg_device, params.TRIG_BLOCK_COND_0_START)
+            else:
+                send_triggers(eeg_device, params.TRIG_BLOCK_COND_1_START)
+
         # draw the inintal fixation point
         for frameN in range(floor(params.FRAME_RATE * params.FIX_TIME)):
             if ((params.FRAME_RATE*0.5) < frameN < (params.FRAME_RATE*0.5+10)) or (params.FRAME_RATE < frameN < (params.FRAME_RATE+10)):
@@ -573,17 +910,36 @@ def run_trials(win, global_clock, trial_clock, output_file):
             kb.clock.reset()
             first_look = True
             
+            # for EEG triggers
+            is_first_frame = True
+            
             # draw stimuli
             stimulus_onset_time = global_clock.getTime()
             for frameN in range(floor(params.FRAME_RATE * params.STIM_TIME)):
                 components['fixation_pt'].draw()
                 components['stim_left'].draw()
                 components['stim_right'].draw()
-                win.flip()
-                keys = kb.getKeys()
+                if params.USE_EEG and is_first_frame:
+                    if row.correct_response = 'left':
+                        win.callOnFlip(send_triggers, eeg_device, params.TRIG_STIM_ON_LEFT)
+                    elif row.correct_response = 'right':
+                        win.callOnFlip(send_triggers, eeg_device, params.TRIG_STIM_ON_RIGHT)
+                    else:
+                        win.callOnFlip(send_triggers, eeg_device, params.TRIG_STIM_ON_NO_TARGET)
+                    is_first_frame = False
+                else:
+                    win.flip()
+                    
+                keys = kb.getKeys(keyList=['left', 'right'])
                 if 'escape' in keys:
                     core.quit()
                 else:
+                    if params.USE_EEG:
+                        for key in keys:
+                            if key == 'left':
+                                send_triggers(eeg_device, params.TRIG_RESPONSE_LEFT)
+                            else:
+                                send_triggers(eeg_device, params.TRIG_RESPONSE_RIGHT)
                     all_keys.extend(keys)
                 kb.clearEvents()
                 
@@ -593,8 +949,10 @@ def run_trials(win, global_clock, trial_clock, output_file):
                     if valid_gaze_pos and not(components['fixation_region'].contains(gaze_pos)):
                         if first_look: # alert if participant failed to fixate and have not been warned in the current trial
                             components['alert'].play()
+                            print('trial ' + str(index) + ' looked away')
                             first_look = False
             
+            is_first_frame = True
             stimulus_offset_time = global_clock.getTime()
             # ISI
             for frameN in range(floor(params.FRAME_RATE * params.ISI_TIME)):
@@ -604,7 +962,17 @@ def run_trials(win, global_clock, trial_clock, output_file):
                 components['fixation_pt'].draw()
                 components['stim_left'].draw()
                 components['stim_right'].draw()
-                win.flip()
+                
+                if params.USE_EEG and is_first_frame:
+                    if row.correct_response = 'left':
+                        win.callOnFlip(send_triggers, eeg_device, params.TRIG_STIM_OFF_LEFT)
+                    elif row.correct_response = 'right':
+                        win.callOnFlip(send_triggers, eeg_device, params.TRIG_STIM_OFF_RIGHT)
+                    else:
+                        win.callOnFlip(send_triggers, eeg_device, params.TRIG_STIM_OFF_NO_TARGET)
+                    first_frame = False
+                else:
+                    win.flip()
                 
                 keys = kb.getKeys()
                 if 'escape' in keys:
@@ -619,6 +987,7 @@ def run_trials(win, global_clock, trial_clock, output_file):
                     if valid_gaze_pos and not(components['fixation_region'].contains(gaze_pos)):
                         if first_look: # alert if participant failed to fixate and have not been warned in the current trial
                             components['alert'].play()
+                            print('trial ' + str(index) + ' looked away')
                             first_look = False
             
             # save response data to dataframe
@@ -641,6 +1010,13 @@ def run_trials(win, global_clock, trial_clock, output_file):
                     n_correct += 1
             trial_n += 1
         
+        # send block end triggers for EEG
+        if params.USE_EEG:
+            if conditions.condtion.iloc[0] == 0:
+                send_triggers(eeg_device, params.TRIG_BLOCK_COND_0_END)
+            else:
+                send_triggers(eeg_device, params.TRIG_BLOCK_COND_1_END)
+                
         if params.USE_EYETRACKER:
             eye_tracker.setRecordingState(False)
         

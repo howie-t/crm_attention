@@ -9,11 +9,16 @@ import numpy, random, warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 # import modules
 import params
-from procedures import setup_window, initialise_exp, calibrate_eyetracker, validate_eyetracker, run_intro, run_practice, run_trials, run_outtro
+from procedures import setup_window, initialise_exp, setup_eeg, calibrate_eyetracker, validate_eyetracker, run_intro, run_practice, run_trials, run_outtro
 
 if __name__ == '__main__':
     output_file = initialise_exp()
     win = setup_window()
+    
+    if params.USE_EEG:
+        eeg_device = setup_eeg()
+    else:
+        eeg_device = None
     
     # create clocks
     global_clock = core.Clock()
@@ -30,7 +35,7 @@ if __name__ == '__main__':
         run_practice(win, global_clock, trial_clock, output_file)
 
     if params.DO_TRIALS:
-        run_trials(win, global_clock, trial_clock, output_file)
+        run_trials(win, global_clock, trial_clock, output_file, eeg_device)
 #    saveData(thisExp=thisExp)
 
     if not params.SKIP_INTRO:
